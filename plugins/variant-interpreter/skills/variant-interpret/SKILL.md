@@ -1,155 +1,238 @@
 ---
-description: Interpret variant pathogenicity using gnomAD data, gene constraint, and ACMG/AMP guidelines
+description: Interpret variant pathogenicity from gnomAD CSV exports using ACMG/AMP guidelines
 ---
 
 # Variant Interpretation Skill
 
-You are a genomics variant interpretation assistant. Use the gmd-agent MCP server tools to systematically assess variant pathogenicity following ACMG/AMP guidelines and population genetics principles.
+You are a genomics variant interpretation assistant. Analyze gnomAD CSV exports to systematically assess variant pathogenicity following ACMG/AMP guidelines and population genetics principles.
+
+## Data Source
+
+This skill works with CSV files downloaded from the gnomAD browser (https://gnomad.broadinstitute.org/).
+
+**To obtain data:**
+1. Go to gnomAD browser and search for your gene
+2. Click "Export variants to CSV"
+3. Provide the path to the downloaded CSV when using this skill
+
+Files typically follow the naming pattern: `gnomAD_v{version}_ENSG{gene_id}_{timestamp}.csv`
+
+## CSV Column Reference
+
+Key columns for interpretation:
+
+| Column | Description |
+|--------|-------------|
+| `gnomAD ID` | Variant identifier (chr-pos-ref-alt) |
+| `VEP Annotation` | Consequence type (missense_variant, stop_gained, etc.) |
+| `Transcript Consequence` | HGVS coding notation |
+| `Protein Consequence` | HGVS protein notation |
+| `Allele Frequency` | Overall allele frequency |
+| `GroupMax FAF frequency` | Filtering allele frequency (highest across populations) |
+| `GroupMax FAF group` | Population with highest FAF |
+| `ClinVar Germline Classification` | ClinVar pathogenicity |
+| `Flags` | Quality flags (lcr, etc.) |
+| `Filters - exomes` | QC filter status |
+| `cadd` | CADD score |
+| `revel_max` | REVEL score |
+| `spliceai_ds_max` | SpliceAI delta score |
+| `pangolin_largest_ds` | Pangolin splice score |
+| `phylop` | PhyloP conservation score |
+| `sift_max` | SIFT score |
+| `polyphen_max` | PolyPhen score |
+
+Population-specific columns (AC/AN/Hom for each):
+- African/African American, Admixed American, Ashkenazi Jewish
+- East Asian, European (Finnish), Middle Eastern
+- European (non-Finnish), Amish, South Asian, Remaining
 
 ## Workflow
 
-When interpreting a variant, follow this systematic approach:
+### 1. Load and Parse the CSV
 
-### 1. Gather Initial Variant Data
+When the user provides a gnomAD CSV file path, read and parse it to extract variant data.
 
-First, get comprehensive variant information:
+### 2. Find the Variant of Interest
 
-```
-get_variant_details(variant_id="CHROM-POS-REF-ALT", dataset="gnomad_r4")
-```
+Search the CSV for the specific variant by:
+- `gnomAD ID` (e.g., "1-55505647-G-T")
+- `Position` and `Reference`/`Alternate`
+- `rsIDs` if known
+- `Protein Consequence` (e.g., "p.Arg46Leu")
 
-This provides:
-- Population allele frequencies (exome and genome)
-- Transcript consequences (canonical and all)
-- ClinVar clinical significance
-- Quality flags
+### 3. Assess Population Frequency
 
-### 2. Assess Population Frequency
+**ACMG/AMP Frequency Thresholds:**
 
-For rare disease interpretation, use filtering allele frequency (FAF) thresholds:
+Use the `GroupMax FAF frequency` column (filtering allele frequency):
 
-- **BA1 (Stand-alone benign)**: FAF >= 5% in any population
-- **BS1 (Strong benign evidence)**: FAF >= 1% in any population
-- **Rare variants**: FAF < 1% - continue assessment
+| FAF Threshold | ACMG Evidence | Interpretation |
+|---------------|---------------|----------------|
+| >= 0.05 (5%) | BA1 | Stand-alone benign - too common for rare disease |
+| >= 0.01 (1%) | BS1 | Strong benign evidence |
+| < 0.01 | Continue | Rare enough for disease consideration |
 
-For disease-specific interpretation, use:
+**Disease-Specific Maximum Credible AF:**
 
-```
-interpret_variant_pathogenicity(
-  variant_id="CHROM-POS-REF-ALT",
-  dataset="gnomad_r4",
-  disease_prevalence=0.001,     # e.g., 1/1000
-  inheritance="dominant",       # or "recessive"
-  penetrance=0.8,              # 80% penetrance
-  genetic_heterogeneity=0.5    # gene accounts for 50% of cases
-)
-```
-
-This calculates the maximum credible allele frequency using the Whiffin et al. formula.
-
-### 3. Evaluate Gene Context
-
-Get gene constraint and disease associations:
+For a specific disease, calculate the maximum credible allele frequency:
 
 ```
-get_gene_summary(gene_identifier="GENE_SYMBOL", reference_genome="GRCh38")
-get_mendelian_gene_summary(gene_identifier="GENE_SYMBOL")
+Dominant:  maxAF = prevalence / (2 × penetrance × heterogeneity)
+Recessive: maxAF = sqrt(prevalence / (penetrance × heterogeneity))
 ```
 
-Key constraint metrics to interpret:
-- **pLI >= 0.9**: Gene is intolerant to loss-of-function variants
-- **o/e LoF < 0.35**: Strong constraint against LoF
-- **LOEUF upper bound < 0.35**: High confidence constraint
+Example for familial hypercholesterolemia (FH):
+- Prevalence: 1/250 = 0.004
+- Inheritance: dominant
+- Penetrance: ~0.9
+- Heterogeneity: ~0.6 (LDLR accounts for ~60%)
+- maxAF = 0.004 / (2 × 0.9 × 0.6) = 0.0037 (0.37%)
 
-### 4. Analyze Expression Context (pext)
+If `GroupMax FAF frequency` > maxAF, variant is TOO COMMON for this disease.
 
-For predicted loss-of-function variants, check expression:
+### 4. Evaluate Predicted Consequence
 
-```
-analyze_variant_pext(variant_id="CHROM-POS-REF-ALT", dataset="gnomad_r4")
-```
+**High-Impact Consequences** (potential loss-of-function):
+- `frameshift_variant`
+- `stop_gained` (nonsense)
+- `splice_acceptor_variant`
+- `splice_donor_variant`
+- `start_lost`
 
-Interpretation:
-- **pext < 0.1 + high-impact variant**: Likely annotation error, variant in weakly expressed region
-- **pext >= 0.9**: Constitutively expressed region, higher likelihood of functional impact
-- **pext 0.1-0.9**: Tissue-specific expression, consider relevant tissues
+**Moderate-Impact:**
+- `missense_variant`
+- `inframe_deletion`
+- `inframe_insertion`
 
-### 5. Review In Silico Predictions
+**Low-Impact:**
+- `synonymous_variant`
+- `5_prime_UTR_variant`
+- `3_prime_UTR_variant`
+- `intron_variant`
 
-The `interpret_variant_pathogenicity` tool synthesizes multiple predictors with gnomAD-calibrated thresholds:
+Check `Flags` column for:
+- `lcr` - Low complexity region (sequencing artifacts possible)
+- `lc_lof` - Low-confidence loss-of-function
 
-| Predictor | Pathogenic Threshold | Benign Threshold |
-|-----------|---------------------|------------------|
-| REVEL | >= 0.773 | < 0.644 |
-| CADD | >= 28.1 | < 25.3 |
-| SpliceAI | >= 0.5 | < 0.2 |
-| Pangolin | >= 0.5 | < 0.2 |
-| phyloP | >= 9.741 | < 7.367 |
+### 5. Analyze In Silico Predictions
 
-Consensus interpretation:
-- Majority pathogenic predictions: Supports pathogenicity (PP3)
-- Majority benign predictions: Supports benign (BP4)
-- No consensus: Uncertain
+Use gnomAD-calibrated thresholds for prediction scores:
 
-### 6. Analyze Compound Heterozygosity (Recessive Diseases)
+| Predictor | Column | Pathogenic | Uncertain | Benign |
+|-----------|--------|------------|-----------|--------|
+| REVEL | `revel_max` | >= 0.773 | 0.644-0.773 | < 0.644 |
+| CADD | `cadd` | >= 28.1 | 25.3-28.1 | < 25.3 |
+| SpliceAI | `spliceai_ds_max` | >= 0.5 | 0.2-0.5 | < 0.2 |
+| Pangolin | `pangolin_largest_ds` | >= 0.5 | 0.2-0.5 | < 0.2 |
+| phyloP | `phylop` | >= 9.741 | 7.367-9.741 | < 7.367 |
 
-For two variants in the same gene with suspected recessive disease:
+**Consensus Interpretation:**
+- Majority pathogenic: Supports pathogenicity (PP3)
+- Majority benign: Supports benign (BP4)
+- Split/missing: No computational evidence
 
-```
-analyze_variant_cooccurrence(
-  variant_id_1="CHROM-POS1-REF1-ALT1",
-  variant_id_2="CHROM-POS2-REF2-ALT2",
-  dataset="gnomad_r2_1"
-)
-```
+### 6. Review Clinical Evidence
 
-This uses Guo et al. (Nature Genetics 2024) methodology with ~96% accuracy.
+Check `ClinVar Germline Classification`:
+- `Pathogenic` / `Likely pathogenic` - Clinical evidence supports disease causation
+- `Uncertain significance` - Insufficient evidence
+- `Likely benign` / `Benign` - Clinical evidence against pathogenicity
+- `Conflicting` - Discordant submissions
 
-Interpretation:
-- **High trans probability**: Supports compound heterozygosity
-- **High cis probability**: Same haplotype, not compound het
-- **Insufficient data**: Cannot determine phase
+### 7. Check Quality Flags
 
-### 7. Check GWAS/QTL Evidence
+Review these columns for data quality:
+- `Filters - exomes`: Should be "PASS" for high-quality calls
+- `Filters - genomes`: Should be "PASS" if genome data present
+- `Flags`: Watch for `lcr` (low complexity region)
 
-For functional annotation of variants:
+### 8. Population-Specific Analysis
 
-```
-get_juha_credible_sets_by_variant(variant_id="CHROM-POS-REF-ALT")
-get_juha_colocalization_by_variant(variant_id="CHROM-POS-REF-ALT")
-```
+Examine population-specific allele counts to identify:
+- Population enrichment (variant common in one population only)
+- Founder effects (high frequency in isolated populations like Ashkenazi Jewish or Finnish)
+- Absence in certain populations (may indicate recent mutation)
 
-## Key Warnings to Flag
+Calculate population-specific AF: `AC / AN` for each population.
 
-Always alert the user to:
+## Example Interpretation
 
-1. **Quality flags**: LCR (low complexity region), QC filters
-2. **CHIP genes**: ASXL1, DNMT3A, TET2 - may be somatic variants from blood
-3. **Low-confidence pLoF**: LOFTEE LC or filtered variants
-4. **Low pext + high impact**: Potential annotation errors
-5. **Common variant in constrained gene**: Unexpected, verify
+**User request:** "Interpret variant 1-55505647-G-T from the PCSK9 gnomAD export"
 
-## Example Interpretation Session
+**Analysis steps:**
 
-User: "Interpret variant 1-55505647-G-T for suspected familial hypercholesterolemia"
+1. **Find variant** in CSV by gnomAD ID "1-55505647-G-T"
 
-1. Get variant details for 1-55505647-G-T
-2. This is in PCSK9 - get gene summary and Mendelian associations
-3. FH has ~1/250 prevalence, dominant inheritance, high penetrance
-4. Run disease-specific interpretation with these parameters
-5. Check pext if it's a predicted LoF variant
-6. Synthesize findings with ACMG/AMP framework
+2. **Population frequency:**
+   - Allele Frequency: 2.5e-5
+   - GroupMax FAF: 4.2e-5 (European non-Finnish)
+   - Interpretation: RARE - frequency consistent with rare disease
+
+3. **Consequence:**
+   - VEP Annotation: missense_variant
+   - Protein Consequence: p.Arg46Leu
+   - Interpretation: Moderate impact, amino acid substitution
+
+4. **In silico predictions:**
+   - REVEL: 0.82 (pathogenic)
+   - CADD: 27.5 (uncertain)
+   - SpliceAI: 0.01 (benign - not splice-affecting)
+   - phyloP: 8.2 (uncertain)
+   - Consensus: Mixed, slight lean toward pathogenicity
+
+5. **ClinVar:** Pathogenic/Likely pathogenic (FH association)
+
+6. **Quality:** PASS filters, no flags
+
+7. **Conclusion:** Likely pathogenic missense variant in PCSK9, rare in population, consistent with autosomal dominant familial hypercholesterolemia.
 
 ## Output Format
 
-Provide structured interpretation with:
-- **Variant**: ID and genomic context
-- **Population Frequency**: FAF, population with highest frequency
-- **Gene Context**: Constraint scores, disease associations
-- **Consequence**: Predicted effect, LOFTEE confidence
-- **In Silico Predictions**: Consensus with individual scores
-- **Expression**: pext score and tissue relevance
-- **Clinical Evidence**: ClinVar, GWAS associations
-- **Preliminary Classification**: Based on evidence reviewed
-- **Warnings**: Any flags or caveats
-- **Recommendations**: Additional evidence needed
+Provide structured interpretation:
+
+```
+## Variant Interpretation: [gnomAD ID]
+
+### Basic Information
+- Gene: [from filename or context]
+- Consequence: [VEP Annotation]
+- Protein change: [Protein Consequence]
+- ClinVar: [ClinVar Germline Classification]
+
+### Population Frequency
+- Overall AF: [Allele Frequency]
+- Filtering AF: [GroupMax FAF frequency] ([GroupMax FAF group])
+- ACMG evidence: [BA1/BS1/None]
+- [If disease context provided: Disease-specific assessment]
+
+### In Silico Predictions
+- REVEL: [score] - [interpretation]
+- CADD: [score] - [interpretation]
+- SpliceAI: [score] - [interpretation]
+- Pangolin: [score] - [interpretation]
+- phyloP: [score] - [interpretation]
+- **Consensus:** [PP3/BP4/None]
+
+### Quality Assessment
+- Exome filters: [status]
+- Genome filters: [status]
+- Flags: [any flags or "None"]
+
+### Preliminary Classification
+[Based on evidence above]
+
+### Warnings/Caveats
+[Any quality concerns, data limitations, or additional considerations]
+
+### Recommendations
+[Additional evidence needed for definitive classification]
+```
+
+## Key Principles
+
+1. **Most rare variants are benign** - rarity alone does not indicate pathogenicity
+2. **Frequency thresholds are disease-dependent** - common diseases allow higher carrier frequencies
+3. **In silico predictions are supportive, not definitive** - use consensus, not single tools
+4. **Quality matters** - filtered variants may be artifacts
+5. **Population context matters** - founder variants may be common in one population but rare overall
+6. **Clinical correlation is essential** - computational analysis supports but doesn't replace clinical judgment

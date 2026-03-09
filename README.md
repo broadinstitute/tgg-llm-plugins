@@ -20,7 +20,7 @@ Or via GitHub (once pushed):
 
 ### variant-interpreter
 
-Comprehensive variant pathogenicity interpretation using gnomAD population data, gene constraint metrics, and ACMG/AMP guidelines.
+Interpret variant pathogenicity from gnomAD CSV exports using ACMG/AMP guidelines.
 
 **Install:**
 ```shell
@@ -32,17 +32,28 @@ Comprehensive variant pathogenicity interpretation using gnomAD population data,
 /variant-interpret
 ```
 
-**Requires:** The `gmd-agent` MCP server (automatically configured by the plugin).
+Then provide the path to your gnomAD CSV file when prompted.
+
+**Data Preparation:**
+
+1. Go to [gnomAD browser](https://gnomad.broadinstitute.org/)
+2. Search for your gene of interest
+3. Click "Export variants to CSV"
+4. Download to your working directory
 
 **Features:**
+- Parse gnomAD CSV exports directly (no API required)
 - Population frequency analysis with ACMG/AMP thresholds (BA1, BS1)
 - Disease-specific maximum credible allele frequency calculation (Whiffin et al.)
-- Gene constraint evaluation (pLI, o/e ratios)
-- In silico prediction synthesis (REVEL, CADD, SpliceAI, etc.)
-- Transcript expression (pext) analysis
-- Compound heterozygosity phase inference
-- Mendelian disease associations
-- GWAS/QTL evidence integration
+- In silico prediction synthesis with gnomAD-calibrated thresholds:
+  - REVEL (0.644/0.773)
+  - CADD (25.3/28.1)
+  - SpliceAI (0.2/0.5)
+  - Pangolin (0.2/0.5)
+  - phyloP (7.367/9.741)
+- ClinVar classification review
+- Quality flag assessment
+- Population-specific frequency analysis
 
 ## Development
 
