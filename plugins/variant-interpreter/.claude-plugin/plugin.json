@@ -3,7 +3,7 @@
   "description": "Interpret variant pathogenicity from gnomAD CSV exports using ACMG/AMP guidelines, population frequency thresholds, and in silico prediction consensus",
   "version": "1.0.0",
   "author": {
-    "name": "Translational Genomics Group"
+    "name": "Matthew Solomonson"
   },
   "keywords": ["genomics", "variant-interpretation", "gnomad", "pathogenicity", "acmg", "mendelian", "csv"]
 }
