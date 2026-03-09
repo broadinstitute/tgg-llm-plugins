@@ -11,13 +11,19 @@
   "plugins": [
     {
       "name": "variant-interpreter",
-      "source": "variant-interpreter",
+      "source": "./variant-interpreter",
       "description": "Comprehensive variant pathogenicity interpretation using gnomAD population data, gene constraint metrics, and in silico predictions",
       "version": "1.0.0",
       "author": {
         "name": "Translational Genomics Group"
       },
-      "keywords": ["genomics", "variant-interpretation", "gnomad", "pathogenicity", "acmg"],
+      "keywords": [
+        "genomics",
+        "variant-interpretation",
+        "gnomad",
+        "pathogenicity",
+        "acmg"
+      ],
       "category": "genomics"
     }
   ]
