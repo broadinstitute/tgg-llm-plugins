@@ -1,5 +1,6 @@
 ---
-description: Interpret variant pathogenicity from gnomAD CSV exports using ACMG/AMP guidelines
+name: variant-interpret
+description: Interpret variant pathogenicity from gnomAD CSV exports using ACMG/AMP guidelines. Use when analyzing genetic variants, assessing pathogenicity, or interpreting gnomAD data.
 ---
 
 # Variant Interpretation Skill
@@ -155,37 +156,6 @@ Examine population-specific allele counts to identify:
 
 Calculate population-specific AF: `AC / AN` for each population.
 
-## Example Interpretation
-
-**User request:** "Interpret variant 1-55505647-G-T from the PCSK9 gnomAD export"
-
-**Analysis steps:**
-
-1. **Find variant** in CSV by gnomAD ID "1-55505647-G-T"
-
-2. **Population frequency:**
-   - Allele Frequency: 2.5e-5
-   - GroupMax FAF: 4.2e-5 (European non-Finnish)
-   - Interpretation: RARE - frequency consistent with rare disease
-
-3. **Consequence:**
-   - VEP Annotation: missense_variant
-   - Protein Consequence: p.Arg46Leu
-   - Interpretation: Moderate impact, amino acid substitution
-
-4. **In silico predictions:**
-   - REVEL: 0.82 (pathogenic)
-   - CADD: 27.5 (uncertain)
-   - SpliceAI: 0.01 (benign - not splice-affecting)
-   - phyloP: 8.2 (uncertain)
-   - Consensus: Mixed, slight lean toward pathogenicity
-
-5. **ClinVar:** Pathogenic/Likely pathogenic (FH association)
-
-6. **Quality:** PASS filters, no flags
-
-7. **Conclusion:** Likely pathogenic missense variant in PCSK9, rare in population, consistent with autosomal dominant familial hypercholesterolemia.
-
 ## Output Format
 
 Provide structured interpretation:
@@ -203,7 +173,6 @@ Provide structured interpretation:
 - Overall AF: [Allele Frequency]
 - Filtering AF: [GroupMax FAF frequency] ([GroupMax FAF group])
 - ACMG evidence: [BA1/BS1/None]
-- [If disease context provided: Disease-specific assessment]
 
 ### In Silico Predictions
 - REVEL: [score] - [interpretation]
@@ -220,9 +189,6 @@ Provide structured interpretation:
 
 ### Preliminary Classification
 [Based on evidence above]
-
-### Warnings/Caveats
-[Any quality concerns, data limitations, or additional considerations]
 
 ### Recommendations
 [Additional evidence needed for definitive classification]
