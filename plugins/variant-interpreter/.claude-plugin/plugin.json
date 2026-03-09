@@ -1,0 +1,15 @@
+{
+  "name": "variant-interpreter",
+  "description": "Comprehensive variant pathogenicity interpretation using gnomAD population data, gene constraint metrics, and in silico predictions. Requires the gmd-agent MCP server.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Translational Genomics Group"
+  },
+  "keywords": ["genomics", "variant-interpretation", "gnomad", "pathogenicity", "acmg", "mendelian"],
+  "mcpServers": {
+    "gmd-agent": {
+      "command": "gmd",
+      "args": ["mcp", "serve"]
+    }
+  }
+}

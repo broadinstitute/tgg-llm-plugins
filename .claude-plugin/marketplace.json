@@ -1,0 +1,30 @@
+{
+  "name": "tgg-plugins",
+  "owner": {
+    "name": "Translational Genomics Group"
+  },
+  "metadata": {
+    "description": "Genomics analysis plugins for clinical variant interpretation and research",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "variant-interpreter",
+      "source": "./variant-interpreter",
+      "description": "Comprehensive variant pathogenicity interpretation using gnomAD population data, gene constraint metrics, and in silico predictions",
+      "version": "1.0.0",
+      "author": {
+        "name": "Translational Genomics Group"
+      },
+      "keywords": [
+        "genomics",
+        "variant-interpretation",
+        "gnomad",
+        "pathogenicity",
+        "acmg"
+      ],
+      "category": "genomics"
+    }
+  ]
+}
