@@ -1,0 +1,6 @@
+{
+  "gnomad": {
+    "type": "http",
+    "url": "https://gnomad-mcp-dpsnoyqx6q-uc.a.run.app/mcp"
+  }
+}

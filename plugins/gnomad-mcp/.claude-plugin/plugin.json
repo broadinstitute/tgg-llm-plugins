@@ -1,0 +1,8 @@
+{
+  "name": "gnomad-mcp",
+  "description": "gnomAD MCP server for variant interpretation and population genetics queries",
+  "version": "1.0.0",
+  "author": {
+    "name": "Matthew Solomonson"
+  }
+}
